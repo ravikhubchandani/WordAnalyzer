@@ -1,0 +1,385 @@
+﻿<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+		<style type="text/css">
+			body {
+				background-color: Beige;
+			}
+			
+			#titulo {
+				margin-left: 50%;
+
+				text-shadow: 2px 2px 8px gray;
+				font-family: Andy, cursive;
+				font-size: 40pt;
+				color: #6666CC;
+			}
+
+			#principal {
+				margin-top: 3%;
+				padding: 2%;
+				border: solid blue;
+				border-width: 5px;
+				border-radius: 20px;
+			}
+
+			#texto {
+				width: 100%;
+				height: 30%;
+			}
+
+			#controles {
+				margin-left: 70%;
+				right: 1%;
+				font-family: calibri, helvetica;
+				width: 30%;
+			}
+
+			#enviar {
+				margin-top: 8px;
+			}
+
+			#resultados, #resultados_ext, #frecuencias {
+				display: none;
+				font-family: calibri, helvetica;
+				font-size: 12pt;
+				font-weight: bold;
+				color: green;
+			}
+		</style>
+		
+		<script type="text/javascript">
+		<!--
+			function Procesar()
+			{
+				function RecopilarInformacion()
+				{
+					/* Variables globales por no estar declaradas */
+					// Array asociativo bidimensional que contiene las palabras
+					// Es bidimensional porque puede haber colisiones
+					Texto = new Object;
+					
+					// Booleano y cadena de contenido					
+					mostrarInfo = (document.getElementById("mostrarInfo").checked);
+					mostrarAdicional = (document.getElementById("mayorInformacion").checked);
+					num_n = document.getElementById("numeroN").value;
+
+					// Si es "" el cuadro esta vacio
+					if(num_n == "")
+						num_n = -1;
+					
+					contenido = document.getElementById("texto").value;
+					numeroPalabras = 0;
+					numeroLineas = 0;
+					numeroCaracteres = 0;
+					longitudMedia = 0;
+				}
+				
+				// Inserta la palabra pal en el array de palabras vector por orden alfabetico
+				function insertarOrden(pal)
+				{	
+					var pos = 0;
+					while(pal > SubArray[pos])
+						pos++;
+					for(var total = SubArray.length; total >= pos; total--)
+						SubArray[total + 1] = SubArray[total];
+					SubArray[pos] = pal;
+				}
+
+
+				// Devuelve true si el caracter en la posicion pos es un separador en ristra
+				function esSeparador(pos, ristra)
+				{	
+					if((pos < 0) || (pos > ristra.length))
+					// La aparicion es la primera o la ultima palabra del contenido
+						return true;
+					if(ristra.charAt(pos).toLowerCase() == ristra.charAt(pos).toUpperCase())
+						return true;	
+					else return false;
+				}
+
+				/* Elimina todas las apariciones del primer parametro en el segundo y devuelve un array con
+				   el numero de veces que aparece en este y la ristra resultante de eliminar sus apariciones
+				   Tiene en cuenta que patron no este contenido en una palabra de la ristra */
+				function eliminarRepetidos(patron, ristra)
+				{
+					var Apariciones = 0;
+					var pos = 0;
+					var desecho = "";
+					
+					do
+					{
+						pos = ristra.search(patron);
+						// Numero positivo o cero si hay ocurrencia
+						if(pos >= 0)
+						{
+							if((esSeparador(pos-1, ristra)) && (esSeparador(pos+patron.length, ristra)))
+							// Solo es ocurrencia valida si el patron no es parte de una palabra mayor
+							{
+								Apariciones++;
+								ristra = ristra.replace(patron, "");
+								// Se cambia por ristra vacia
+							}
+							else
+							{
+							// Falsa aparicion, la ocurrencia esta contenida en otra palabra, no se cuenta
+								pos += patron.length;
+								while(esSeparador(pos, ristra) == false)
+									pos++;
+									
+								// En javascript los parametros de la funcion substring son posiciones inicio y el final - 1
+								desecho += ristra.substring(0, pos + 1);
+								/* Todo lo que no sea el patron se guarda en una ristra auxiliar para devolver como resultado
+								   de eliminar todas las apariciones del patron */
+								ristra = ristra.substring(pos + 1, ristra.length);
+							}
+						}		
+					} while(pos != -1);
+					
+					desecho += ristra;
+					// En el resto de la ristra no hay aparicion del patron pero tambien se devuelve, puede contener otras palabras
+					return new Array(Apariciones, desecho);
+				}
+				
+				// Funcion aparte para contar lineas
+				function contarLineas()
+				{
+					// Como minimo hay una linea, por lo que habra unaa linea menos que retornos de carro hayan
+					var numLineas = 1;
+					var pos = pos = contenido.indexOf("\n", 0);
+					// Por cada retorno se suma una linea
+					while(pos >= 0)
+					{
+						numLineas++;
+						pos = contenido.indexOf("\n", pos + 1);
+					} 
+					return numLineas;
+				}
+				
+				RecopilarInformacion();
+				OcultarResultados();
+				
+				/* Las palabras pueden repetirse
+				   Si el resultado de aplicar a un caracter las operaciones tolowercase y touppercase son
+				   diferentes se considera parte de una palabra */
+				 
+				var posFin = 0;
+				var Palabra;
+				var Apariciones;
+				var SubArray;
+				frecuenciaMasAlta = 0;
+				var infoPalabra;
+				
+				// Sirve para indicar una posicion libre en un array en caso de colisiones
+				//var posLibre;
+				
+				if(contenido.length == 0)
+				{
+					alert("Introduzca texto para analizar en el recuadro");
+					return;
+				}
+				else if ((num_n * 1) != num_n)
+				{
+					alert("Introduzca un numero valido por favor");
+					return;
+				}
+				
+				numeroLineas = contarLineas();
+					
+				while(contenido.length > 0)
+				{
+					// Elimina todos los caracteres separadores del principio
+					posFin = 0;
+					while(esSeparador(0, contenido) && contenido.length > 0)
+						contenido = contenido.substring(1, contenido.length);
+					
+					// Si ha salido por que todos los caracteres del final eran separadores ya no hay que analizar mas
+					if(contenido.length == 0)
+						break;
+						
+					// Recoge la primera palabra de la ristra
+					posFin = 0;
+					while(esSeparador(posFin, contenido) == false)
+						posFin++;
+					
+					/* Ahora Palabra tiene la palabra actual, siempre es la primera de la ristra ya que se va recortando
+					   Hay que buscar sus apariciones */
+					Palabra = contenido.substring(0, posFin);
+					
+					infoPalabra = eliminarRepetidos(Palabra, contenido);		
+					Apariciones = infoPalabra[0];
+					numeroPalabras += Apariciones;
+					numeroCaracteres += Apariciones * Palabra.length;
+					contenido = infoPalabra[1];
+					
+					// Sirve para saber hasta cuanto hay que contar a la hora de mostrar los resultados 1 .. frecuenciaMasAlta
+					if(Apariciones > frecuenciaMasAlta)
+						frecuenciaMasAlta = Apariciones;
+					
+					if(Texto[Apariciones] == undefined)
+					// Aun no hay ocurrencias de una palabra en esta frecuencia
+					{
+						// Se crea un objeto en el objeto por si ocurren colisiones en esta frecuencia			
+						Texto[Apariciones] = new Array();
+						SubArray = Texto[Apariciones];
+						SubArray[0] = Palabra;
+					}
+					// Ya hay ocurrencias en esta frecuencia, se inserta en el subobjeto al colisionar
+					else
+					{
+						SubArray = Texto[Apariciones];
+						insertarOrden(Palabra);
+					}
+				}
+				
+				CrearResultados();
+				MostrarResultados();
+				if(mostrarInfo)
+					MostrarFrecuencias();
+				if(mostrarAdicional)
+					MostrarOpcionales();
+			}
+
+			function CrearResultados()
+			{
+				// Contendran el texto informativo con los resultados
+				var Resultado = "";
+				var Frecuencias = "";
+				var Opcional = "";	
+				
+				var frecuenciaMasAltaAux = frecuenciaMasAlta;
+				// Hacemos una copia para no perder el valor original y que se necesita mas adelante
+				var numPalabrasAgregadas = 0;
+				// Si es -1 es que el cuadro de texto esta vacio
+				if(num_n == -1)
+					num_n = numeroPalabras;
+				else if(num_n == 0)
+				{
+					// Si no se quiere ver ninguna palabra
+					document.getElementById("resultados").innerHTML = Resultado;
+					return;
+				}
+				// Almacena informacion temporal sobre la frecuencia actual del bucle for, sumada a la informacion general
+				var ResultadoActual;
+				Resultado = "Palabras más frecuentes <br>";
+				do {					
+					if(Texto[frecuenciaMasAltaAux] != undefined)
+					{
+						Resultado += "Aparecen " + frecuenciaMasAltaAux + " veces => ";
+						SubArray=Texto[frecuenciaMasAltaAux];
+						for(var j=0; ;j++){
+							if((SubArray[j] == undefined) || (numPalabrasAgregadas == num_n))
+								break;
+							else
+							{
+								Resultado += SubArray[j] + ", ";
+								numPalabrasAgregadas++;
+							}
+						}
+						Resultado = Resultado.substring(0, Resultado.length - 2) + "<br>";
+					}
+					frecuenciaMasAltaAux--;
+				} while ((numPalabrasAgregadas < num_n) && (frecuenciaMasAltaAux > 0));
+				
+				Resultado += "<br>";
+				document.getElementById("resultados").innerHTML = Resultado;
+				
+				Frecuencias = "Palabras en cada frecuencia <br>";
+				for(var i=1; i<=frecuenciaMasAlta; i++) {
+					if(Texto[i] != undefined)
+					{
+						Frecuencias += "Aparecen " + i + " veces => ";
+						SubArray=Texto[i];
+						for(var j=0; ;j++)
+						{
+							if(SubArray[j] == undefined)
+								break;
+							else
+								Frecuencias += SubArray[j] + ", ";
+						}
+						Frecuencias = Frecuencias.substring(0, Frecuencias.length - 2) + "<br>";
+					}
+				}
+				
+				Frecuencias += "<br>";
+				document.getElementById("frecuencias").innerHTML = Frecuencias;
+				
+				// Redondea la longitud media por palabra a la unidad mas cercana
+				longitudMedia = numeroCaracteres / numeroPalabras;
+				if((Math.ceil(longitudMedia) - longitudMedia) <= 0.5)
+					longitudMedia = Math.ceil(longitudMedia);
+				else
+					longitudMedia = Math.floor(longitudMedia);
+				
+				Opcional += "Numero de palabras: " + numeroPalabras;
+				Opcional += "<br>Longitud media de una palabra: " + longitudMedia;
+				Opcional += "<br>Numero de lineas: " + numeroLineas;
+				document.getElementById("resultados_ext").innerHTML = Opcional;
+			}
+
+			/* Funcion que hace visibles las etiquetas donde se muestran los resultados */
+			function MostrarResultados()
+			{
+				document.getElementById("resultados").style.display = "inline";	
+			}
+			
+			function MostrarFrecuencias()
+			{
+				mostrarInfo = (document.getElementById("mostrarInfo").checked);
+				if(mostrarInfo)
+					document.getElementById("frecuencias").style.display = "inline";
+				else
+					document.getElementById("frecuencias").style.display = "none";
+			}
+
+			function MostrarOpcionales()
+			{
+				mostrarAdicional = (document.getElementById("mayorInformacion").checked);
+				if(mostrarAdicional)
+					document.getElementById("resultados_ext").style.display = "inline";
+				else
+					document.getElementById("resultados_ext").style.display = "none";
+			}
+
+			/* Funcion que hace invisibles las etiquetas donde se muestran los resultados */
+			function OcultarResultados()
+			{
+				document.getElementById("resultados").style.display = "none";
+				document.getElementById("frecuencias").style.display = "none";
+				document.getElementById("resultados_ext").style.display = "none";
+			}
+		//-->
+		</script>
+				
+		<title>Estadísticas léxicas</title>
+	</head>
+	
+	<body>
+		<h1 id="titulo">Analizador Léxico</h1>
+		
+		<div id="principal">
+			<form name="analizar_textos">
+				<textarea id="texto" rows="10"></textarea>
+				
+				<div id="controles">
+					<fieldset>
+						<legend>Opciones</legend>
+						<label><input type="checkbox" id="mostrarInfo" onClick="MostrarFrecuencias()"> Mostrar todas las frecuencias</label><br>
+						<label><input type="checkbox" id="mayorInformacion"  onClick="MostrarOpcionales()">Mostrar información adicional</label><br>
+						<label>Mostrar las <input type="text" id="numeroN" size="3" /> palabras más repetidas</label>
+					</fieldset>
+
+					<div id="enviar">
+						<input type="button" value="Analizar" onClick="Procesar()"/>
+						<input type="reset" value="Reiniciar" onClick="OcultarResultados()"/>					
+					</div>
+				</div>
+				
+				<p id="resultados"></p>
+				<p id="frecuencias"></p>
+				<p id="resultados_ext"></p>
+			</form>
+		</div>
+	</body>
+</html>
